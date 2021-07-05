@@ -3,6 +3,8 @@ Python functions to fetch data from an AssaultCube server
 
 ## Examples
 
+You need to use the "management port", which is often game port + 1 to query and fetch data.
+
 ```python
 from assaultcube_server_reader import get_server_info_and_namelist, get_playerstats
 
