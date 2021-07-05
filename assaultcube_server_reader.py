@@ -117,6 +117,7 @@ def read_player_data(player_data, options):
     if len(player_data) < 20:
         print(f"read_player_data Debug : {player_data}")
         return {}
+
     # extping_code don't store since it's unused
     _, player_data, _ = unpack_helper("bb", player_data)
     # proto_version don't store since it's unused
@@ -130,6 +131,7 @@ def read_player_data(player_data, options):
         tping, player_data, _ = unpack_helper("h", player_data)
         ping = tping[0]
     name, player_data = getstring(player_data)
+    print(f"name {name}")
     team, player_data = getstring(player_data)
     frags, player_data = getint(player_data)
     flags, player_data = getint(player_data)
@@ -143,22 +145,20 @@ def read_player_data(player_data, options):
             damage = tdamage[0]
     accuracy, player_data = getint(player_data)
     if accuracy == -128:
-        # If you team kill a friend with 100% accuracy there is something weird
-        # The accuracy will be negative and written on 3 bytes
+        # Sometime the accuracy will be written on 3 bytes (4 ? and the remaining data is incorrect TODO: check)
         # So we read the next 2 and set the accuracy to 100 (same as client /accuracy)
         _, player_data = getint(player_data)
         _, player_data = getint(player_data)
         accuracy = 100
     health, player_data = getint(player_data)
+
     armour, player_data = getint(player_data)
     gun, player_data = getint(player_data) # 5 = sniper
     role, player_data = getint(player_data)
     state, player_data = getint(player_data) #(Alive,Dead,Spawning,Lagged,Editing)
 
-    # _, player_data = getint(player_data) # ?
-    # ip_tuple, player_data, _ = unpack_helper("BBB", player_data)
-    # ip = ".".join(str(byte) for byte in ip_tuple) + ".0"
-
+    ip_tuple, player_data, _ = unpack_helper("BBB", player_data)
+    ip = ".".join(str(byte) for byte in ip_tuple) + ".0"
     return {
         "client_number": client_number,
         "ping": ping,
@@ -175,7 +175,7 @@ def read_player_data(player_data, options):
         "gun": gun,
         "role": role,
         "state": state,
-        #"ip": ip
+        "ip": ip
     }
 
 def get_playerstats(server_ip, port, server_options):
