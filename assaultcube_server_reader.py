@@ -154,8 +154,11 @@ def read_player_data(player_data, options):
     gun, player_data = getint(player_data) # 5 = sniper
     role, player_data = getint(player_data)
     state, player_data = getint(player_data) #(Alive,Dead,Spawning,Lagged,Editing)
-    ip_tuple, player_data, _ = unpack_helper("BBB", player_data)
-    ip = ".".join(str(byte) for byte in ip_tuple) + ".0"
+
+    # _, player_data = getint(player_data) # ?
+    # ip_tuple, player_data, _ = unpack_helper("BBB", player_data)
+    # ip = ".".join(str(byte) for byte in ip_tuple) + ".0"
+
     return {
         "client_number": client_number,
         "ping": ping,
@@ -172,7 +175,7 @@ def read_player_data(player_data, options):
         "gun": gun,
         "role": role,
         "state": state,
-        "ip": ip
+        #"ip": ip
     }
 
 def get_playerstats(server_ip, port, server_options):
