@@ -20,8 +20,9 @@ print(get_server_info_and_namelist("1two3.tk", 3457))
  'server_map': 'ac_desert3'
  }
  
-print(get_playerstats("1two3.tk", 3457, None))
-
+print(get_playerstats("1two3.tk", 3457, {"damage": True}))
+# or get_playerstats("mysick.tk", 2, None) 
+# for other servers, 1two3 is modded to return damages per players
 [
   {'accuracy': 100,
   'armour': 100,
