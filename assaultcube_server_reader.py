@@ -28,11 +28,11 @@ def getint(data):
     """
     Unpack 1 int (signed char) from data
     Return that int and the data
+    See putint and getint in protocol.cpp
     """
     my_int, data, _ = unpack_helper("b", data)
-    # It means the data is on 2 bytes
-    # Read next bytes and concatenated 2 values
-    # We know we have only 1 int so only return first tuple value
+    if my_int[0] == -128:
+        my_int, data, _ = unpack_helper("H", data) # Read the value on 2 bytes (cf putint in protocol.cpp)
     return my_int[0], data
 
 def getchar(data):
@@ -106,10 +106,11 @@ def get_server_info_and_namelist(server_ip, port):
             "playerlist": playerlist
     }
 
-def read_player_data(player_data, options):
+def read_player_data(player_data):
     """
     Read one player data (bytes format)
     Return a dictionnary with all read informations
+    See extinfo_statsbuf function in server.cpp
     """
     # Should have more data than this
     # Sometime the server send incomplete data
@@ -127,9 +128,6 @@ def read_player_data(player_data, options):
 
     client_number, player_data = getint(player_data)
     ping, player_data = getint(player_data)
-    if ping == -128: # TODO: check if it works when ping > 256
-        tping, player_data, _ = unpack_helper("h", player_data)
-        ping = tping[0]
     name, player_data = getstring(player_data)
     print(f"name {name}")
     team, player_data = getstring(player_data)
@@ -137,28 +135,23 @@ def read_player_data(player_data, options):
     flags, player_data = getint(player_data)
     deaths, player_data = getint(player_data)
     teamkills, player_data = getint(player_data)
-    damage = -1
-    if options and "damage" in options:
-        damage, player_data, = getint(player_data)
-        if damage == -128:
-            tdamage, player_data, _ = unpack_helper("h", player_data)
-            damage = tdamage[0]
-    accuracy, player_data = getint(player_data)
-    if accuracy == -128:
-        # Sometime the accuracy will be written on 3 bytes (4 ? and the remaining data is incorrect TODO: check)
-        # So we read the next 2 and set the accuracy to 100 (same as client /accuracy)
-        _, player_data = getint(player_data)
-        _, player_data = getint(player_data)
-        accuracy = 100
+    accuracy, player_data = getint(player_data) # Not correct with sniper headshots ?
     health, player_data = getint(player_data)
-
     armour, player_data = getint(player_data)
     gun, player_data = getint(player_data) # 5 = sniper
     role, player_data = getint(player_data)
-    state, player_data = getint(player_data) #(Alive,Dead,Spawning,Lagged,Editing)
+    state, player_data = getint(player_data) # (Alive,Dead,Spawning,Lagged,Editing)
 
     ip_tuple, player_data, _ = unpack_helper("BBB", player_data)
     ip = ".".join(str(byte) for byte in ip_tuple) + ".0"
+
+    damage = -1
+    damage, player_data, = getint(player_data)
+
+    # Total potential damages, it increses even if you don't hit
+    shotdamage = -1
+    shotdamage, player_data, = getint(player_data)
+    
     return {
         "client_number": client_number,
         "ping": ping,
@@ -168,17 +161,18 @@ def read_player_data(player_data, options):
         "flags": flags,
         "deaths": deaths,
         "teamkills": teamkills,
-        "damage": damage,
         "accuracy": accuracy,
         "health": health,
         "armour": armour,
         "gun": gun,
         "role": role,
         "state": state,
-        "ip": ip
+        "ip": ip,
+        "damage": damage,
+
     }
 
-def get_playerstats(server_ip, port, server_options):
+def get_playerstats(server_ip, port):
     """
     Query server for player stats
     Return all players stats as dict
@@ -197,7 +191,7 @@ def get_playerstats(server_ip, port, server_options):
     _, data_client_number, _ = unpack_helper("bb", data_client_number)
     # proto_version don't store since it's unused
     _, data_client_number, _ = unpack_helper("bbb", data_client_number)
-    # EXT_PLAYERSTATS_RESP_IDS (Should = -10) Maybe I should make a check
+    # EXT_PLAYERSTATS_RESP_IDS (Should = -10)
     ext_playerstats_resp_ids, data_client_number, _ = unpack_helper("bb", data_client_number)
     if ext_playerstats_resp_ids[1] != -10:
         print(f"get_playerstats Debug: {ext_playerstats_resp_ids} {data_client_number}")
@@ -209,7 +203,7 @@ def get_playerstats(server_ip, port, server_options):
     # Here we know how many client_number we have so we can receive our data
     for client_number in client_number_list:
         player_data = server_socket.recv(65535)
-        dict_player_data = read_player_data(player_data, server_options)
+        dict_player_data = read_player_data(player_data)
         # Sometime the server sends bad data
         if "name" in dict_player_data and dict_player_data["name"] != "":
             players_stats.append(dict_player_data)
